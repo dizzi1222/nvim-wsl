@@ -11,7 +11,11 @@
 -- OBVIAMENTE REVISA LOS KEYMAPS: config/keymaps.lua
 --
 -- KEYMAPS DE CHAT por IA FUNCIONAN AL SELECCIONAR TEXTO [v]
---
+
+-- =============================
+-- CONFIG BASICA [+GUIA ATAJOS]
+-- =============================
+
 vim.g.mapleader = " "
 
 local keymap = vim.keymap
@@ -61,6 +65,10 @@ vim.keymap.set("v", "<A-S-f>", vim.lsp.buf.format)
 --     ["q"] = "actions.close",
 --   },
 -- similar al EXPLORER snack_picker_list
+
+-- =============================
+-- ABRIR EXPLORER, EN macOS, wsl, Linux
+-- =============================
 
 -- Abrir el explorador de archivos o copiar la ruta del archivo actual
 -- Tanto en Windows Explorer, Linux (Nautilus, Dolphin, Thunar) y macOS
@@ -160,6 +168,10 @@ vim.keymap.set("n", "<leader>r", copy_file_path, { desc = "Copiar ruta del ar
 -- Comando personalizado
 vim.api.nvim_create_user_command("CopyPath", copy_file_path, {})
 
+-- =============================
+-- ABRIR, ADD TAB (Ctrl+T)
+-- =============================
+
 -- Mapear Ctrl+T y Space+A+N para {add new file} abrir una nueva pestaña - lo mismo que space + m + n
 
 -- Crear nuevo archivo desde treesitter - arbol de archivo - lo mismo que Control + Ts
@@ -187,17 +199,19 @@ vim.keymap.set("n", "<C-t>", function()
   end
 end, { noremap = true, silent = true })
 
+-- =============================
+-- BUFFERS VISUALES (PowerToys Compatible)
+-- =============================
 -- Cambiar a pestaña anterior con [b
 keymap.set("n", "<C-P>", ":bprev<CR>", { noremap = true, silent = true })
 
 -- Cambiar a pestaña siguiente con ]b
 keymap.set("n", "<C-]>", ":bnext<CR>", { noremap = true, silent = true })
+
 -- Navegación de Buffers al estilo VSCode / Navegador
 vim.keymap.set("n", "<C-PageUp>", ":bprev<CR>", { noremap = true, silent = true, desc = "Buffer anterior" })
 vim.keymap.set("n", "<C-PageDown>", ":bnext<CR>", { noremap = true, silent = true, desc = "Siguiente buffer" })
--- =============================
--- BUFFERS VISUALES (PowerToys Compatible)
--- =============================
+
 -- Mapea 'Physical Shortcut' (ej. Alt+1) a 'Mapped To' (ej. F13) en PowerToys
 vim.keymap.set("n", "<F1>", "<cmd>BufferLineGoToBuffer 1<CR>", { desc = "Buffer 1" })
 vim.keymap.set("n", "<F2>", "<cmd>BufferLineGoToBuffer 2<CR>", { desc = "Buffer 2" })
@@ -210,6 +224,11 @@ vim.keymap.set("n", "<F8>", "<cmd>BufferLineGoToBuffer 8<CR>", { desc = "Buffer 
 vim.keymap.set("n", "<F9>", "<cmd>BufferLineGoToBuffer 9<CR>", { desc = "Buffer 9" })
 vim.keymap.set("n", "<F10>", "<cmd>BufferLineGoToBuffer -1<CR>", { desc = "Último Buffer" }) -- Activar backspace+Control - MODO INSERCION COMO EN VSCODE!!! = Ctrl W
 
+-- =============================
+-- FIX DEL CONTROL Backspace
+-- =============================
+
+-- Activar backspace+Control - MODO INSERCION COMO EN VSCODE!!! = Ctrl W
 vim.api.nvim_set_keymap("i", "<C-H>", "<C-W>", { noremap = true, silent = true })
 vim.api.nvim_set_keymap("i", "<C-BS>", "<C-W>", { noremap = true, silent = true })
 
@@ -283,6 +302,10 @@ for _, ft in ipairs(snack_filetypes) do
     end,
   })
 end
+
+-- =============================
+-- CERRAR BUFFERS, VENTANAS
+-- =============================
 
 --🛑 🗿 Cerrar pestaña
 
@@ -566,6 +589,26 @@ if has_claude then
   end, { desc = "Claude: cerrar panel" })
 end
 
+-- =============================
+-- LIVE SERVER, deploy, DOCKER 
+-- =============================
+
+-- Launch live-server [Space + L + ?] {Equivalente a Ctrl+O en VSCODE}
+-- Para proyectos / HTML estaticos
+keymap.set("n", "<leader>ll", ":cd %:h | term live-server<CR>", { desc = "Launch Live Server [Html Estatico]" })
+
+-- Para proyectos de React
+vim.keymap.set("n", "<leader>ls", ":cd %:p:h | term npm start<CR>", { desc = "React Start" })
+
+-- Para DEPURAR Proyectos de Producción
+vim.keymap.set("n", "<leader>lb", ":cd %:p:h | term npm run build<CR>", { desc = "Run Build / Depurar" })
+
+-- Para SERVIR Proyectos de Producción
+vim.keymap.set("n", "<leader>lv", ":cd %:p:h | term npm run serve<CR>", { desc = "Run Serve / Depurar" })
+
+-- Para deployar proyectos
+vim.keymap.set("n", "<leader>ld", ":cd %:p:h | term npm run deploy<CR>", { desc = "Run Deploy" })
+
 -- Launch live-server [Space + L + S] {Equivalente a Ctrl+O en VSCODE}
 keymap.set("n", "<leader>ls", function()
   -- Verificar si live-server está instalado
@@ -589,6 +632,10 @@ keymap.set("n", "<leader>ld", function()
   vim.cmd("cd %:h | term " .. docker_cmd .. " compose up")
 end, { desc = "Docker Compose Up" })
 
+-- =============================
+-- MOVIMIENTO, REIDENTADO
+-- =============================
+
 -- Movimiento de líneas con reindentado automático
 -- O Instala: "ziontee113/move.nvim"
 
@@ -608,6 +655,11 @@ end, { desc = "Move line up" })
 vim.keymap.set("n", "<A-Down>", function()
   move_line("down")
 end, { desc = "Move line down" })
+
+-- =============================
+-- TABEAR ENTRE VENTANAS (TMUX) 
+-- =============================
+
 -- FORZAR Ctrl+Space para TABEAR -- ✅ CORRECTO - Fíjate en los cierres
 -- Configuración de navegación TMUX con Ctrl+Space
 vim.defer_fn(function()
