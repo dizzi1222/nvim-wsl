@@ -335,11 +335,12 @@ return {
       -- Opacidad (Neovim)
       vim.keymap.set("n", "<C-o>", toggle_background_opacity, { desc = "Toggle opacidad Neovim (50%/100%)" })
       vim.keymap.set("i", "<C-o>", toggle_background_opacity, { desc = "Toggle opacidad Neovim (50%/100%)" })
-      vim.keymap.set("n", "<leader>pr", toggle_background_opacity, { desc = "Toggle opacidad Neovim" })
+      vim.keymap.set("n", "<leader>po", toggle_background_opacity, { desc = "Toggle Opacidad en Neovim" })
+      vim.keymap.set("n", "<leader>co", toggle_background_opacity, { desc = "Toggle Opacidad en Neovim" })
 
       -- Blur (Windows Terminal)
       vim.keymap.set("n", "<leader>cb", toggle_windows_terminal_blur, { desc = "Toggle Blur en Windows Terminal" })
-      vim.keymap.set("n", "<leader>co", toggle_windows_terminal_blur, { desc = "Toggle Blur en Windows Terminal" })
+      vim.keymap.set("n", "<leader>pb", toggle_windows_terminal_blur, { desc = "Toggle Blur en Windows Terminal" })
 
       -- Auto-aplicar al cambiar colorscheme
       vim.api.nvim_create_autocmd("ColorScheme", {
