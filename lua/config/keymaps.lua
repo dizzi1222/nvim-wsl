@@ -161,9 +161,9 @@ local function copy_file_path()
 end
 
 -- Mapeo para Ctrl+Alt+R (como VSCode)
-vim.keymap.set("n", "<C-A-r>", copy_file_path, { desc = "Copiar ruta del archivo (VSCode style)" })
+vim.keymap.set("n", "<C-A-r>", copy_file_path, { desc = "🔎Copiar ruta del archivo (VSCode style)" })
 -- Opción A: <leader>r (Ruta)
-vim.keymap.set("n", "<leader>r", copy_file_path, { desc = "Copiar ruta del archivo (VSCode style)" })
+vim.keymap.set("n", "<leader>r", copy_file_path, { desc = "🔎Copiar ruta del archivo (VSCode style)" })
 
 -- Comando personalizado
 vim.api.nvim_create_user_command("CopyPath", copy_file_path, {})
@@ -633,7 +633,7 @@ end
 keymap.set("n", "<leader>ag", function()
   show_gemini_menu(nil)
 end, {
-  desc = " 󰊭 ~ Abrir Gemini con menú",
+  desc = " 󰊭 🤖 ~ Abrir Gemini con menú",
 })
 
 -- Mapeo para modo visual
@@ -962,6 +962,21 @@ end, { desc = "🦙 Ver/Editar Modelfile" })
 vim.keymap.set("n", "<leader>al", function()
   show_ollama_list()
 end, { desc = "🦙 Listar modelos" })
+
+-- Switch / Cambiar Modelo ~ <leader>as
+vim.keymap.set("n", "<leader>as", function()
+  local current_model = vim.g.ollama_model or "deepseek-r1"
+  vim.ui.input({
+    prompt = "🦙 Nuevo modelo (actual: " .. current_model .. "): ",
+    default = current_model,
+  }, function(input)
+    if input and input ~= "" then
+      vim.g.ollama_model = input
+      save_ollama_model(input)
+      vim.notify("✅ Modelo guardado: " .. input, vim.log.levels.INFO)
+    end
+  end)
+end, { desc = "🦙 Switch/Cambiar modelo de Ollama rápido" })
 
 -- =============================
 -- -- Solo en Arhcivos.MD | MARKDown (Gentleman config) - {no funciona bien}
