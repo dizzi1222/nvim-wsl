@@ -1,5 +1,7 @@
 # 💤 LazyVim
 
+![Nvim Wsl Desktop](https://github.com/user-attachments/assets/9144215e-6156-43c3-beba-4cca7f431337)
+
 # CON SHIFT + L = Alt Tab en NVIM (right)
 # CON SHIFT + H = Alt Tab en NVIM (left)
 
