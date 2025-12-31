@@ -6,6 +6,9 @@
 
 ![Nvim WSL Desktop](https://github.com/user-attachments/assets/9144215e-6156-43c3-beba-4cca7f431337)
 
+![Nvim  Desktop](https://github.com/user-attachments/assets/60c80cc3-98d7-4af0-a5bd-8842a9c8c80d)
+
+
 **Build optimizado para Linux Hyprland con soporte completo WSL/Windows**
 
 </div>
