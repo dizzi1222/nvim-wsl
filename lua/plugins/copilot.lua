@@ -22,6 +22,7 @@ return {
         auto_trigger = true,
         keymap = {
           accept = "<Tab>", -- acepta sugerencia
+          dismiss = "<C-]>", -- cierra sugerencia
         },
       },
       filetypes = {

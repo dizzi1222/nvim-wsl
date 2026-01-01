@@ -22,7 +22,7 @@ return {
       keymaps = {
         accept_suggestion = "<Tab>",
         clear_suggestion = "<C-]>",
-        accept_word = "<C-j>",
+        accept_word = "<Tab>", -- antes estaba como C-j
         -- El keymap 'dismiss_suggestion' ya no se menciona en la config por defecto,
         -- pero puedes mantenerlo si lo necesitas, o usar la opción por defecto si existe.
       },
