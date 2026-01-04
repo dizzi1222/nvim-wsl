@@ -24,8 +24,8 @@ return {
         "<leader>fw",
         function()
           require("fzf-lua").files({ cwd = "/mnt/c/Users/diego/" })
-        end,
-        desc = "🔍 [FZF] Files (Windows)",
+        end, 
+        desc = "🔍 [FZF] Files HOME / (Windows)",
       },
       -- En teoria seria lo mismo que lo de arriba, pero para WSL
       {
