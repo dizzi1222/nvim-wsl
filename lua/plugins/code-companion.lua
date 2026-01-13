@@ -22,7 +22,7 @@ return {
   },
   keys = {
     {
-      "<leader>aC",
+      "<leader>ac",
       "<cmd>CodeCompanionChat Toggle<cr>",
       mode = { "n", "v" },
       desc = "  AI Toggle [C]hat [Companion]",
