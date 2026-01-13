@@ -184,7 +184,7 @@ vim.keymap.set("n", "<leader>an", function()
   if name ~= "" then
     vim.cmd("tabnew " .. dir .. "/" .. name)
   end
-end, { noremap = true, silent = true, desc = "Nuevo archivo [add new file]" })
+end, { noremap = true, silent = true, desc = "  Nuevo archivo [add new file]" })
 
 -- keymap.set("n", "<C-t>", ":tabnew<CR>", { noremap = true, silent = true })
 vim.keymap.set("n", "<C-t>", function()
@@ -361,9 +361,10 @@ vim.keymap.set("v", "p", '"_dP', { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>dd", function()
   require("snacks").dashboard.open()
 end, { desc = "Abrir dashboard de Snacks" })
--- =============================
--- [⚠ BETA⚠!] KEYMAPS OLLAMA AI (LOCAL) 🦙🤖🔥️ NO REQUIERE INTERNET
--- =============================
+
+-- ==================================================================
+-- [⚠ BETA⚠!] KEYMAPS OLLAMA AI (LOCAL) 󰎣 🦙🤖🔥️ NO REQUIERE INTERNET
+-- ==================================================================
 
 -- Ruta del archivo de configuración
 local config_dir = vim.fn.stdpath("data") .. "/ollama"
@@ -386,13 +387,56 @@ local function save_ollama_model(model)
   vim.fn.writefile({ model }, config_file)
 end
 
+-- Helper para buscar el comando de ollama (WSL/Windows/Linux)
+local function get_ollama_cmd()
+  -- 0. Override manual (si el usuario lo define en su config)
+  if vim.g.ollama_cmd_custom then
+    return vim.g.ollama_cmd_custom
+  end
+
+  -- 1. Intentar encontrar el ejecutable nativo (usamos exepath para la ruta completa)
+  if vim.fn.executable("ollama") == 1 then
+    return vim.fn.exepath("ollama")
+  end
+
+  -- 2. En Windows, intentar encontrar ollama.exe explícitamente
+  if vim.fn.executable("ollama.exe") == 1 then
+    return vim.fn.exepath("ollama.exe")
+  end
+
+  -- 3. Fallback: Si estamos en Windows y no hay ollama nativo, intentar usar WSL
+  -- IMPORTANTE: Usamos login shell (-l) para cargar el PATH del usuario
+  if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 then
+    if vim.fn.executable("wsl") == 1 then
+      return "wsl $SHELL -lic"
+    end
+  end
+
+  return nil
+end
+
 -- Cargar modelo al iniciar
 vim.g.ollama_model = load_ollama_model()
 
 local function open_ollama(prompt, input_text)
+  local cmd_exec = get_ollama_cmd()
+  if not cmd_exec then
+    vim.notify("❌ Ollama no encontrado. Asegúrate de tenerlo instalado y en tu PATH.", vim.log.levels.ERROR)
+    return
+  end
+
   local model = vim.g.ollama_model
   vim.cmd("vsplit | vertical resize 50")
-  vim.cmd("term ollama run " .. model)
+
+  -- Si usamos WSL wrapper, necesitamos quotear el comando completo
+  local full_cmd
+  if cmd_exec:match("^wsl.*-lic$") then
+    full_cmd = cmd_exec .. " 'ollama run " .. model .. "'"
+  else
+    full_cmd = cmd_exec .. " run " .. model
+  end
+
+  vim.cmd("term " .. full_cmd)
 
   local final_prompt = prompt
   if input_text and input_text ~= "" then
@@ -408,35 +452,83 @@ local function open_ollama(prompt, input_text)
   vim.cmd("startinsert")
 end
 
--- 🆕 Función para mostrar la lista de modelos instalados
+-- 🆕 Función para listar modelos
 local function show_ollama_list()
+  local cmd_exec = get_ollama_cmd()
+  if not cmd_exec then
+    vim.notify("❌ Ollama no encontrado.", vim.log.levels.ERROR)
+    return
+  end
+
   vim.cmd("split")
-  vim.cmd("term ollama list")
+
+  -- Si usamos WSL wrapper, necesitamos quotear el comando
+  local full_cmd
+  if cmd_exec:match("^wsl.*-lic$") then
+    full_cmd = cmd_exec .. " 'ollama list'"
+  else
+    full_cmd = cmd_exec .. " list"
+  end
+
+  vim.cmd("term " .. full_cmd)
   vim.cmd("startinsert")
 end
 
--- 🆕 Función mejorada para ver Y EDITAR el Modelfile
+-- 🔥 FUNCIÓN MEJORADA: Ver Y EDITAR Modelfile
 local function show_ollama_modelfile()
   local model = vim.g.ollama_model
 
-  -- Crear directorio temporal para Modelfiles
+  -- Crear directorio para Modelfiles
   local modelfile_dir = vim.fn.stdpath("data") .. "/ollama/modelfiles"
   vim.fn.mkdir(modelfile_dir, "p")
 
-  -- Nombre del archivo temporal
-  local modelfile_path = modelfile_dir .. "/" .. model:gsub(":", "_") .. ".modelfile"
+  -- Nombre del archivo (reemplazar : por _)
+  local safe_model_name = model:gsub(":", "_")
+  local modelfile_path = modelfile_dir .. "/" .. safe_model_name .. ".modelfile"
 
-  -- Extraer el Modelfile actual y guardarlo
-  local cmd = string.format("ollama show %s --modelfile > %s", model, modelfile_path)
-  vim.fn.system(cmd)
+  -- 1️⃣ Extraer Modelfile con sistema operativo detectado
+  -- 1️⃣ Extraer Modelfile con sistema operativo detectado y comando validado
+  local cmd_exec = get_ollama_cmd()
+  if not cmd_exec then
+    vim.notify("❌ Ollama no encontrado.", vim.log.levels.ERROR)
+    return
+  end
 
-  -- Abrir el archivo en Neovim para editarlo
-  vim.cmd("split " .. modelfile_path)
+  local extract_cmd
+  -- Si usamos WSL wrapper, necesitamos quotear el comando completo
+  if cmd_exec:match("^wsl.*-lic$") then
+    -- Convertir ruta de Windows a WSL (C:\... -> /mnt/c/...)
+    local wsl_path = modelfile_path:gsub("\\", "/"):gsub("^(%a):", function(drive)
+      return "/mnt/" .. drive:lower()
+    end)
 
-  -- Configurar el buffer
-  vim.bo.filetype = "dockerfile" -- Syntax highlighting similar
+    extract_cmd = string.format('%s "ollama show %s --modelfile > %s"', cmd_exec, model, wsl_path)
+  else
+    if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 then
+      -- Windows CMD
+      extract_cmd = string.format('%s show %s --modelfile > "%s"', cmd_exec, model, modelfile_path)
+    else
+      -- Linux/WSL/macOS
+      extract_cmd = string.format("%s show %s --modelfile > %s", cmd_exec, model, vim.fn.shellescape(modelfile_path))
+    end
+  end
 
-  -- Agregar instrucciones en la parte superior
+  vim.notify("📥 Extrayendo Modelfile de: " .. model, vim.log.levels.INFO)
+  vim.fn.system(extract_cmd)
+
+  -- Verificar si se extrajo correctamente
+  if vim.v.shell_error ~= 0 then
+    vim.notify("❌ Error al extraer Modelfile. ¿Existe el modelo " .. model .. "?", vim.log.levels.ERROR)
+    return
+  end
+
+  -- 2️⃣ Abrir el archivo en Neovim
+  vim.cmd("split " .. vim.fn.fnameescape(modelfile_path))
+
+  -- 3️⃣ Configurar el buffer
+  vim.bo.filetype = "dockerfile" -- Syntax highlighting
+
+  -- 4️⃣ Agregar instrucciones al inicio
   local instructions = {
     "# 📝 MODELFILE DE: " .. model,
     "# ",
@@ -444,36 +536,44 @@ local function show_ollama_modelfile()
     "# ⚡ APLICA CAMBIOS: :OllamaApply",
     "# 📚 Docs: https://github.com/ollama/ollama/blob/main/docs/modelfile.md",
     "# ",
+    "# EJEMPLOS DE PERSONALIZACIÓN:",
+    "# PARAMETER temperature 0.7    # Creatividad (0.0 = conservador, 1.0 = creativo)",
+    "# PARAMETER num_ctx 8192        # Contexto (tokens de memoria)",
+    '# SYSTEM "Eres un experto en..." # Prompt del sistema',
+    "# ",
     "",
   }
 
   vim.api.nvim_buf_set_lines(0, 0, 0, false, instructions)
 
-  -- Crear comando para aplicar cambios
+  -- 5️⃣ Crear comando :OllamaApply (solo en este buffer)
   vim.api.nvim_buf_create_user_command(0, "OllamaApply", function()
-    local new_model_name = model .. "-custom"
+    -- Guardar cambios primero
+    vim.cmd("write")
 
     vim.ui.input({
-      prompt = "Nombre del nuevo modelo (default: " .. new_model_name .. "): ",
-      default = new_model_name,
+      prompt = "Nombre del nuevo modelo (Enter = " .. model .. "-custom): ",
+      default = model .. "-custom",
     }, function(input)
-      if input and input ~= "" then
-        local create_cmd = string.format("ollama create %s -f %s", input, modelfile_path)
-        vim.notify("🔨 Creando modelo: " .. input, vim.log.levels.INFO)
-
-        -- Ejecutar en terminal flotante
-        vim.cmd("split")
-        vim.cmd("term " .. create_cmd)
-
-        -- Actualizar el modelo actual si es exitoso
-        vim.defer_fn(function()
-          vim.g.ollama_model = input
-          save_ollama_model(input)
-          vim.notify("✅ Modelo creado y activado: " .. input, vim.log.levels.INFO)
-        end, 2000)
+      if not input or input == "" then
+        return
       end
+
+      local create_cmd = string.format("%s create %s -f %s", cmd_exec, input, vim.fn.shellescape(modelfile_path))
+      vim.notify("🔨 Creando modelo: " .. input .. " ...", vim.log.levels.INFO)
+
+      -- Ejecutar en terminal
+      vim.cmd("split")
+      vim.cmd("term " .. create_cmd)
+
+      -- Actualizar modelo activo después de 2 segundos
+      vim.defer_fn(function()
+        vim.g.ollama_model = input
+        save_ollama_model(input)
+        vim.notify("✅ Modelo creado y activado: " .. input, vim.log.levels.INFO)
+      end, 2000)
     end)
-  end, {})
+  end, { desc = " 󰎣 Crear modelo personalizado desde este Modelfile" })
 
   vim.notify("📝 Edita el Modelfile. Aplica con :OllamaApply", vim.log.levels.INFO)
 end
@@ -510,7 +610,7 @@ local function show_ollama_menu(selected_text)
 
     if idx == 7 then -- Ver/Editar Modelfile
       show_ollama_modelfile()
-    elseif idx == 8 then -- 🆕 Listar modelos
+    elseif idx == 8 then -- Listar modelos
       show_ollama_list()
     elseif idx == 9 then -- Cambiar modelo
       vim.ui.input({
@@ -535,36 +635,269 @@ local function show_ollama_menu(selected_text)
   end)
 end
 
--- Mapeos para Ollama (Space + A + O)
+-- Mapeos
 vim.keymap.set("n", "<leader>ao", function()
   show_ollama_menu(nil)
-end, { desc = "🦙 Abrir Ollama" })
+end, { desc = " 󰎣  🦙 Abrir Ollama" })
 
 vim.keymap.set("v", "<leader>ao", function()
   vim.cmd('normal! "+y')
   local selected_text = vim.fn.getreg('"')
   show_ollama_menu(selected_text)
-end, { desc = "🦙 Enviar selección a Ollama" })
+end, { desc = " 󰎣 🦙 Enviar selección a Ollama" })
 
--- Comando para verificar el modelo actual
+-- Comandos
 vim.api.nvim_create_user_command("OllamaModel", function()
   vim.notify("🦙 Modelo actual: " .. vim.g.ollama_model, vim.log.levels.INFO)
 end, {})
 
--- 🆕 Comando para listar modelos
 vim.api.nvim_create_user_command("OllamaList", function()
   show_ollama_list()
 end, {})
 
--- Mapeo directo para ver/editar el modelfile
+-- Mapeos directos
 vim.keymap.set("n", "<leader>am", function()
   show_ollama_modelfile()
-end, { desc = "🦙 Ver/Editar Modelfile" })
+end, { desc = " 󰎣 🦙 Ver/Editar Modelfile" })
 
--- 🆕 Mapeo directo para listar modelos
 vim.keymap.set("n", "<leader>al", function()
   show_ollama_list()
-end, { desc = "🦙 Listar modelos de Ollama" })
+end, { desc = " 󰎣 🦙 Listar modelos" })
+
+-- Switch / Cambiar Modelo ~ <leader>as
+vim.keymap.set("n", "<leader>as", function()
+  local current_model = vim.g.ollama_model or "deepseek-r1"
+  vim.ui.input({
+    prompt = "🦙 Nuevo modelo (actual: " .. current_model .. "): ",
+    default = current_model,
+  }, function(input)
+    if input and input ~= "" then
+      vim.g.ollama_model = input
+      save_ollama_model(input)
+      vim.notify("✅ Modelo guardado: " .. input, vim.log.levels.INFO)
+    end
+  end)
+end, { desc = " 󰎣 🦙 Switch/Cambiar modelo de Ollama rápido" })
+
+-- ================================================
+-- CLAUDE AI ATAJOS SENCILLOS 🤖  󰭹 [by dizzi1222]
+-- ================================================
+-- Agregar estas líneas después de tus keymaps existentes en keymaps.lua
+
+-- Función helper para obtener información del repositorio Git
+local function get_repo_context()
+  local cwd = vim.fn.getcwd()
+  local git_root = vim.fn.system("git -C " .. vim.fn.shellescape(cwd) .. " rev-parse --show-toplevel 2>/dev/null")
+
+  if vim.v.shell_error == 0 then
+    git_root = git_root:gsub("\n", "")
+    local repo_name = vim.fn.fnamemodify(git_root, ":t")
+    local branch = vim.fn
+      .system("git -C " .. vim.fn.shellescape(git_root) .. " rev-parse --abbrev-ref HEAD 2>/dev/null")
+      :gsub("\n", "")
+
+    return {
+      is_git = true,
+      root = git_root,
+      name = repo_name,
+      branch = branch,
+      relative_path = vim.fn.fnamemodify(vim.fn.expand("%:p"), ":~:."),
+    }
+  end
+
+  return {
+    is_git = false,
+    root = cwd,
+    name = vim.fn.fnamemodify(cwd, ":t"),
+    relative_path = vim.fn.expand("%:t"),
+  }
+end
+
+-- Función para construir contexto rico para Claude
+local function build_claude_context(selected_text, custom_instruction)
+  local repo = get_repo_context()
+  local file_path = vim.fn.expand("%:p")
+  local file_type = vim.bo.filetype
+  local line_num = vim.fn.line(".")
+
+  -- Convertir ruta de WSL a Windows si es necesario
+  local display_path = file_path
+  if vim.fn.has("wsl") == 1 then
+    display_path = vim.fn.system("wslpath -w " .. vim.fn.shellescape(file_path)):gsub("\n", "")
+  end
+
+  local context = "📁 Proyecto: " .. repo.name .. "\n"
+
+  if repo.is_git then
+    context = context .. "🌿 Branch: " .. repo.branch .. "\n"
+  end
+
+  context = context .. "📄 Archivo: " .. repo.relative_path .. "\n"
+  context = context .. "🔤 Tipo: " .. (file_type ~= "" and file_type or "text") .. "\n"
+  context = context .. "📍 Línea: " .. line_num .. "\n"
+  context = context .. "💻 Sistema: " .. (vim.fn.has("wsl") == 1 and "WSL" or vim.loop.os_uname().sysname) .. "\n\n"
+
+  if custom_instruction then
+    context = context .. "📝 Instrucción: " .. custom_instruction .. "\n\n"
+  end
+
+  if selected_text and selected_text ~= "" then
+    context = context .. "```" .. file_type .. "\n" .. selected_text .. "\n```\n"
+  end
+
+  return context
+end
+
+-- Función principal para abrir Claude con contexto
+local function open_claude_with_context(prompt, selected_text)
+  local context = build_claude_context(selected_text, prompt)
+
+  -- Copiar al portapapeles del sistema (funciona en WSL también)
+  vim.fn.setreg("+", context)
+  vim.fn.setreg("*", context)
+
+  -- Abrir Claude.ai según el sistema operativo
+  if vim.fn.has("wsl") == 1 then
+    -- WSL: usar Windows para abrir el navegador
+    vim.fn.jobstart({ "powershell.exe", "-c", "start https://claude.ai" }, { detach = true })
+  elseif vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 then
+    -- Windows nativo
+    os.execute('start "" "https://claude.ai"')
+  elseif vim.fn.has("mac") == 1 then
+    -- macOS
+    os.execute("open https://claude.ai")
+  else
+    -- Linux
+    os.execute("xdg-open https://claude.ai >/dev/null 2>&1 &")
+  end
+
+  vim.notify("✅ Contexto copiado al portapapeles\n🌐 Abriendo Claude.ai", vim.log.levels.INFO)
+end
+
+-- Menú de opciones de Claude
+local function show_claude_menu(selected_text)
+  local repo = get_repo_context()
+
+  local options = {
+    "🔍 Revisar código (contexto: " .. repo.name .. ")",
+    "📚 Explicar código detalladamente",
+    "🐛 Ayudar a debuggear",
+    "♻️ Refactorizar con mejores prácticas",
+    "⚡ Optimizar rendimiento",
+    "🧪 Generar tests unitarios",
+    "📖 Documentar función/clase",
+    "🔐 Revisar seguridad",
+    "💬 Pregunta personalizada",
+  }
+
+  vim.ui.select(options, {
+    prompt = " 🤖 Claude AI - Proyecto: " .. repo.name,
+  }, function(choice, idx)
+    if not choice then
+      return
+    end
+
+    local prompts = {
+      "Revisa este código del proyecto '"
+        .. repo.name
+        .. "' y sugiere mejoras teniendo en cuenta el contexto del repositorio:",
+      "Explica este código paso a paso, considerando que es parte del proyecto '" .. repo.name .. "':",
+      "Ayúdame a debuggear este código. Proyecto: '" .. repo.name .. "':",
+      "Refactoriza este código aplicando mejores prácticas. Proyecto: '" .. repo.name .. "':",
+      "Optimiza este código para mejor rendimiento. Contexto: '" .. repo.name .. "':",
+      "Genera tests unitarios completos para este código del proyecto '" .. repo.name .. "':",
+      "Genera documentación detallada (JSDoc/docstring) para este código:",
+      "Revisa este código buscando vulnerabilidades de seguridad. Proyecto: '" .. repo.name .. "':",
+    }
+
+    if idx == 9 then
+      vim.ui.input({
+        prompt = "Tu pregunta para Claude: ",
+      }, function(input)
+        if input and input ~= "" then
+          open_claude_with_context(input, selected_text)
+        end
+      end)
+    else
+      open_claude_with_context(prompts[idx], selected_text)
+    end
+  end)
+end
+
+-- =============================
+-- KEYMAPS PARA CLAUDE AI
+-- =============================
+
+-- Modo Normal: Abrir Claude con contexto del archivo actual
+vim.keymap.set("n", "<leader>aC", function()
+  show_claude_menu(nil)
+end, { desc = "  Claude AI - Abrir con contexto" })
+
+-- Modo Visual: Enviar código seleccionado con contexto completo
+vim.keymap.set("v", "<leader>aC", function()
+  vim.cmd('normal! "+y')
+  local selected_text = vim.fn.getreg('"')
+  show_claude_menu(selected_text)
+end, { desc = "  Claude AI - Enviar selección" })
+
+-- Atajo rápido: Copiar TODO el contexto actual al portapapeles
+vim.keymap.set("n", "<leader>ay", function()
+  local repo = get_repo_context()
+  local full_file = vim.fn.join(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+  local context = build_claude_context(full_file, "Aquí está el archivo completo:")
+
+  vim.fn.setreg("+", context)
+  vim.notify("📋 Archivo completo + contexto copiado\n📁 " .. repo.name, vim.log.levels.INFO)
+end, { desc = "  📋 Copiar archivo completo con contexto" })
+
+-- Atajo ultra-rápido: Solo copiar código seleccionado (sin abrir navegador)
+vim.keymap.set("v", "<leader>ay", function()
+  vim.cmd('normal! "+y')
+  local selected_text = vim.fn.getreg('"')
+  local context = build_claude_context(selected_text, nil)
+
+  vim.fn.setreg("+", context)
+  vim.notify("✅ Código + contexto copiado al portapapeles", vim.log.levels.INFO)
+end, { desc = "  📋 Copiar selección con contexto (sin abrir)" })
+
+-- Comando para ver información del repositorio actual
+vim.api.nvim_create_user_command("ClaudeInfo", function()
+  local repo = get_repo_context()
+  local info = "📊 INFORMACIÓN DEL PROYECTO\n\n"
+  info = info .. "📁 Nombre: " .. repo.name .. "\n"
+  info = info .. "📂 Root: " .. repo.root .. "\n"
+
+  if repo.is_git then
+    info = info .. "🌿 Branch: " .. repo.branch .. "\n"
+    info = info .. "✅ Git: Sí\n"
+  else
+    info = info .. "❌ Git: No\n"
+  end
+
+  info = info .. "📄 Archivo: " .. repo.relative_path .. "\n"
+  info = info .. "💻 Sistema: " .. (vim.fn.has("wsl") == 1 and "WSL" or vim.loop.os_uname().sysname)
+
+  vim.notify(info, vim.log.levels.INFO)
+end, { desc = "Ver info del proyecto para Claude" })
+
+-- =============================
+-- ATAJOS ADICIONALES OPCIONALES
+-- =============================
+
+-- Abrir Claude directamente (sin contexto)
+vim.keymap.set("n", "<leader>aO", function()
+  if vim.fn.has("wsl") == 1 then
+    vim.fn.jobstart({ "powershell.exe", "-c", "start https://claude.ai" }, { detach = true })
+  elseif vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 then
+    os.execute('start "" "https://claude.ai"')
+  elseif vim.fn.has("mac") == 1 then
+    os.execute("open https://claude.ai")
+  else
+    os.execute("xdg-open https://claude.ai >/dev/null 2>&1 &")
+  end
+end, { desc = "   Abrir Claude.ai (sin contexto)" })
+
+-- vim.notify("✨ Claude AI keymaps cargados\n🎯 Usa <leader>ac para empezar", vim.log.levels.INFO)
 
 -- =============================
 -- KEYMAPS GEMINI AI 🐐🗣️🔥️✍️ NO REQUIERE API
@@ -633,7 +966,7 @@ end
 keymap.set("n", "<leader>ag", function()
   show_gemini_menu(nil)
 end, {
-  desc = " 󰊭 🤖 ~ Abrir Gemini con menú",
+  desc = " 󰊭 ~ Abrir Gemini con menú",
 })
 
 -- Mapeo para modo visual
@@ -650,15 +983,15 @@ local has_gemini, gemini_chat = pcall(require, "gemini.chat")
 if has_gemini then
   keymap.set("n", "<leader>gg", function()
     gemini_chat.prompt_current()
-  end, { desc = "Gemini: prompt en buffer actual" })
+  end, { desc = " 󰊭 Gemini: prompt en buffer actual" })
 
   keymap.set("v", "<leader>g", function()
     gemini_chat.prompt_selected()
-  end, { desc = "Gemini: prompt con texto seleccionado" })
+  end, { desc = " 󰊭 Gemini: prompt con texto seleccionado" })
 
   keymap.set("n", "<leader>gl", function()
     gemini_chat.prompt_line()
-  end, { desc = "Gemini: prompt con línea actual" })
+  end, { desc = " 󰊭 Gemini: prompt con línea actual" })
 end
 
 -- =============================
@@ -1093,22 +1426,22 @@ if has_claude then
   -- Visual: completar selección con Claude
   vim.keymap.set("v", "<leader>ac", function()
     claude.complete_selection()
-  end, { desc = "Claude: completar selección" })
+  end, { desc = "  Claude: completar selección" })
 
   -- Normal: abrir panel de Claude
   vim.keymap.set("n", "<leader>aa", function()
     claude.open_panel()
-  end, { desc = "Claude: abrir panel" })
+  end, { desc = "  Claude: abrir panel" })
 
   -- Optional: enviar línea actual a Claude y obtener respuesta
   vim.keymap.set("n", "<leader>al", function()
     claude.complete_line()
-  end, { desc = "Claude: completar línea actual" })
+  end, { desc = "  Claude: completar línea actual" })
 
   -- Optional: cerrar panel de Claude
   vim.keymap.set("n", "<leader>ax", function()
     claude.close_panel()
-  end, { desc = "Claude: cerrar panel" })
+  end, { desc = "  Claude: cerrar panel" })
 end
 
 -- =============================
