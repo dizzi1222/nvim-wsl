@@ -1,4 +1,7 @@
 -- ~/.config/nvim/init.lua
+-- para que no guarde todo el texto/ moleste con el Space + Q + Q
+vim.opt.shada = "!,'100,<50,s10,h" -- Config minimalista
+
 -- 👈 anteriormente como init-vscode.lua
 if vim.g.scode then
   -- CoPnfiguración específica para VSCode
