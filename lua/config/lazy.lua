@@ -138,6 +138,7 @@ require("lazy").setup({
 
     -- Tus plugins personalizados
     { import = "plugins" },
+    { "fedepujol/move.nvim" },
   },
   defaults = {
     lazy = false,
